@@ -12,6 +12,7 @@
 #import <net/if.h>
 #import <SystemConfiguration/CaptiveNetwork.h>
 
+
 #define IOS_CELLULAR    @"pdp_ip0"
 #define IOS_WIFI        @"en0"
 #define IOS_VPN         @"utun0"
@@ -21,39 +22,51 @@
 @implementation ESPTools
 
 + (nullable NSString *)getCurrentWiFiSsid {
-    NSArray *ifs = (__bridge_transfer id)CNCopySupportedInterfaces();
-    id info = nil;
-    for (NSString *ifnam in ifs) {
-        info = (__bridge_transfer id)CNCopyCurrentNetworkInfo((__bridge CFStringRef)ifnam);
-        if (info && [info count]) {
-            break;
-        }
+    CFArrayRef interfaces = CNCopySupportedInterfaces();
+    NSDictionary *info = nil;
+    NSString *ssid;
+    if (interfaces) {
+        CFStringRef interface = CFArrayGetValueAtIndex(interfaces, 0);
+        info = (__bridge_transfer NSDictionary *)CNCopyCurrentNetworkInfo(interface);
+        CFRelease(interfaces);
     }
-    // Key: BSSID, SSID, SSIDDATA
-    return [(NSDictionary*)info objectForKey:@"SSID"];
+
+    if (info) {
+        ssid = info[(NSString *)kCNNetworkInfoKeySSID];
+        NSLog(@"Wi-Fi SSID: %@", ssid);
+
+    }
+     return ssid ? ssid : @"";
 }
 
+
+
+
 + (nullable NSString *)getCurrentBSSID {
-    NSArray *ifs = (__bridge_transfer id)CNCopySupportedInterfaces();
-    id info = nil;
-    for (NSString *ifnam in ifs) {
-        info = (__bridge_transfer id)CNCopyCurrentNetworkInfo((__bridge CFStringRef)ifnam);
-        if (info && [info count]) {
-            break;
-        }
+   CFArrayRef interfaces = CNCopySupportedInterfaces();
+    NSDictionary *info = nil;
+    NSString *bssid;
+    if (interfaces) {
+        CFStringRef interface = CFArrayGetValueAtIndex(interfaces, 0);
+        info = (__bridge_transfer NSDictionary *)CNCopyCurrentNetworkInfo(interface);
+        CFRelease(interfaces);
     }
-    // Key: BSSID, SSID, SSIDDATA
-    return [(NSDictionary*)info objectForKey:@"BSSID"];
+
+    if (info) {
+        bssid = info[(NSString *)kCNNetworkInfoKeyBSSID];
+        NSLog(@"Wi-Fi BSSID: %@", bssid);
+    }
+     return bssid ? bssid : @"d0:76:e7:02:00:00";
 }
 
 + (NSString *)getIPAddress:(BOOL)preferIPv4 {
     NSArray *searchArray = preferIPv4 ?
     @[ IOS_VPN @"/" IP_ADDR_IPv4, IOS_VPN @"/" IP_ADDR_IPv6, IOS_WIFI @"/" IP_ADDR_IPv4, IOS_WIFI @"/" IP_ADDR_IPv6, IOS_CELLULAR @"/" IP_ADDR_IPv4, IOS_CELLULAR @"/" IP_ADDR_IPv6 ] :
     @[ IOS_VPN @"/" IP_ADDR_IPv6, IOS_VPN @"/" IP_ADDR_IPv4, IOS_WIFI @"/" IP_ADDR_IPv6, IOS_WIFI @"/" IP_ADDR_IPv4, IOS_CELLULAR @"/" IP_ADDR_IPv6, IOS_CELLULAR @"/" IP_ADDR_IPv4 ] ;
-    
+
     NSDictionary *addresses = [self getIPAddresses];
     NSLog(@"addresses: %@", addresses);
-    
+
     __block NSString *address;
     [searchArray enumerateObjectsUsingBlock:^(NSString *key, NSUInteger idx, BOOL *stop) {
         address = addresses[key];
@@ -71,13 +84,13 @@
     "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\."
     "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\."
     "([01]?\\d\\d?|2[0-4]\\d|25[0-5])$";
-    
+
     NSError *error;
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:urlRegEx options:0 error:&error];
-    
+
     if (regex != nil) {
         NSTextCheckingResult *firstMatch=[regex firstMatchInString:ipAddress options:0 range:NSMakeRange(0, [ipAddress length])];
-        
+
         if (firstMatch) {
             NSRange resultRange = [firstMatch rangeAtIndex:0];
             NSString *result=[ipAddress substringWithRange:resultRange];
@@ -91,7 +104,7 @@
 
 + (NSDictionary *)getIPAddresses {
     NSMutableDictionary *addresses = [NSMutableDictionary dictionaryWithCapacity:8];
-    
+
     // retrieve the current interfaces - returns 0 on success
     struct ifaddrs *interfaces;
     if(!getifaddrs(&interfaces)) {

@@ -26,14 +26,14 @@ NSString *callback_ID;
 - (void) start:(CDVInvokedUrlCommand *)command{
     [self.commandDelegate runInBackground:^{
         dispatch_queue_t  queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-        
+
         [self._condition lock];
         callback_ID = command.callbackId;
         NSString *apSsid = (NSString *)[command.arguments objectAtIndex:0];
-        NSString *apBssid = (NSString *)[command.arguments objectAtIndex:1];
-        NSString *apPwd = (NSString *)[command.arguments objectAtIndex:2];
-        int taskCount = [[command.arguments objectAtIndex:3] intValue];
-        NSString *broadcastData =  (NSString *)[command.arguments objectAtIndex:4];
+        NSString *apBssid = @"d0:76:e7:02:00:00";
+        NSString *apPwd = (NSString *)[command.arguments objectAtIndex:1];
+        int taskCount = 100;
+        NSString *broadcastData =  @"";
         BOOL isbroadcastData = true;
         if([broadcastData compare:@"1"]==NSOrderedSame){
             isbroadcastData=false;
@@ -48,21 +48,21 @@ NSString *callback_ID;
         esptouchDelegate.command=command;
         esptouchDelegate.commandDelegate=self.commandDelegate;
         [self._esptouchTask setEsptouchDelegate:esptouchDelegate];
-        [self._esptouchTask setPackageBroadcast:YES]; // if YES send broadcast packets, else send multicast packets
+        [self._esptouchTask setPackageBroadcast:YES];
         [self._condition unlock];
         NSArray * esptouchResultArray = [self._esptouchTask executeForResults:taskCount];
-        
+
         dispatch_async(queue, ^{
             // show the result to the user in UI Main Thread
             dispatch_async(dispatch_get_main_queue(), ^{
-                
-                
+
+
                 ESPTouchResult *firstResult = [esptouchResultArray objectAtIndex:0];
                 // check whether the task is cancelled and no results received
                 if (!firstResult.isCancelled)
                 {
                     if ([firstResult isSuc])
-                    {   
+                    {
                         ESPTouchResult *resultInArray = [esptouchResultArray objectAtIndex:0];
                         NSString *ipaddr = [ESP_NetUtil descriptionInetAddr4ByData:resultInArray.ipAddrData];
                         // device0 I think is suppose to be the index
@@ -71,7 +71,7 @@ NSString *callback_ID;
                         NSDictionary *dic =@{@"bssid":resultInArray.bssid,@"ip":ipaddr};
                         //NSLog(@"收到 json:%@",dic);
                         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dic];
-                        
+
                         [pluginResult setKeepCallbackAsBool:true];
                         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
                     }
@@ -83,7 +83,7 @@ NSString *callback_ID;
                         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
                     }
                 }
-                
+
             });
         });
     }];
