@@ -72,29 +72,20 @@ public class esptouch extends CordovaPlugin {
         final byte[] apSsid = strToByteArray(args.getString(0));
         final byte[] apBssid = {0,0,0,0,0,0};
         final byte[] apPassword = strToByteArray(args.getString(1));
-        final byte[] deviceCountData = strToByteArray("1");
+        final byte[] deviceCountData = strToByteArray(args.getString(2));
         final byte[] broadcastData = strToByteArray("1");
         taskResultCount = deviceCountData.length == 0 ? -1 : Integer.parseInt(new String(deviceCountData));
         mEsptouchTask = new EsptouchTask(apSsid, apBssid, apPassword, cordova.getActivity());
         mEsptouchTask.setPackageBroadcast(broadcastData[0] == 49);
         mEsptouchTask.setEsptouchListener(myListener);
       }
-      cordova.getThreadPool().execute(
-        new Runnable() {
-          @Override
-          public void run() {
-            List<IEsptouchResult> resultList = mEsptouchTask.executeForResults(taskResultCount);
-            IEsptouchResult firstResult = resultList.get(0);
-            if (!firstResult.isCancelled()) {
-              int count = 0;
-              final int maxDisplayCount = taskResultCount;
-              if (!firstResult.isSuc()) {
-                callbackContext.error("No Device Found");
-              }
-            }
+      List<IEsptouchResult> resultList = mEsptouchTask.executeForResults(taskResultCount);
+      IEsptouchResult firstResult = resultList.get(0);
+      if (!firstResult.isCancelled()) {
+        if (!firstResult.isSuc()) {
+          callbackContext.error("No Device Found");
           }
         }
-      );
       return true;
     } else if (action.equals("stop")) {
       if (mEsptouchTask != null) {
